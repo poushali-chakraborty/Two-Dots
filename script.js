@@ -1,22 +1,36 @@
-// Set up canvas
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-const cellSize = 10;
-const rows = canvas.height / cellSize;
-const cols = canvas.width / cellSize;
-let gameFrame=0;
-let speed=8;
-let canvasPosition=canvas.getBoundingClientRect();//provide info about element
+const canvas=document.getElementById('canvas1');
+const ctx=canvas.getContext('2d');
+const CANVAS_WIDTH=canvas.width=400;
+const CANVAS_HEIGHT=canvas.height=600;
+
+const music=new Audio();
+music.src='Easy song.mp3';
+
+const buttonImage=new Image();
+buttonImage.src='play1.png';
+
+const buttonX=CANVAS_WIDTH/2-32;
+const buttonY=CANVAS_HEIGHT/2-32;
+
 let n=2;
 let d=0;
 let dot=true;
 let connecting=false;
 let pickedObj;
 let score=0;
-const scoreui=document.getElementById("score");
-function gradient(a, b) {
-    return (b.y-a.y)/(b.x-a.x);
-}
+const font="Press Start 2P"
+
+
+let gameFrame=0;
+
+let started=false;
+
+let win=false;
+let end=false;
+
+let canvasPosition=canvas.getBoundingClientRect();//provide info about element
+
+
 class Line{
     constructor(x,y,colour){
         this.points=[];
@@ -113,10 +127,19 @@ class Dot{
     }
 }
 
-canvas.addEventListener('click',(e)=>{
+
+
+
+
+window.addEventListener('click',(e)=>{
 	positionX=e.x - canvasPosition.left;
 	positionY=e.y - canvasPosition.top;
-    gameObjects.forEach(obj=>{
+
+	
+	x=positionX;//finding middle
+	y=positionY;
+	buttonPress(x,y);
+	gameObjects.forEach(obj=>{
         if(obj.type=="dot" && obj.picked(positionX,positionY)){
             console.log("picked");
             if(!connecting){
@@ -131,11 +154,54 @@ canvas.addEventListener('click',(e)=>{
         
         }
     });
-
+	
 
 });
 
-canvas.addEventListener('mousemove',(e)=>{
+window.addEventListener('touchstart',(e)=>{
+	positionX=e.x - canvasPosition.left;
+	positionY=e.y - canvasPosition.top;
+
+	
+	x=positionX;//finding middle
+	y=positionY;
+	buttonPress(x,y);
+	gameObjects.forEach(obj=>{
+        if(obj.type=="dot" && obj.picked(positionX,positionY)){
+            console.log("picked");
+            if(!connecting){
+                //start drawing line.. line will be start from the first dot and go arrownd how the mouse is moving
+                gameObjects.push(new Line(positionX,positionY,obj.colour));
+                connecting=true;
+            
+                pickedObj=obj;
+            }
+
+            
+        
+        }
+    });
+	
+
+});
+
+
+
+
+window.addEventListener('mousemove',(e)=>{
+    if (connecting){
+        positionX=e.x - canvasPosition.left;
+	    positionY=e.y - canvasPosition.top;
+        gameObjects.forEach(obj=>{
+            if(obj.type=="line"){
+                obj.draggLine(positionX,positionY);
+
+            }
+        });
+    }
+});
+
+window.addEventListener('touchmove',(e)=>{
     if (connecting){
         positionX=e.x - canvasPosition.left;
 	    positionY=e.y - canvasPosition.top;
@@ -149,58 +215,84 @@ canvas.addEventListener('mousemove',(e)=>{
 });
 
 
+function buttonPress(x,y){
+	
+if(x>=buttonX && x<=buttonX+64 && y>=buttonY && y<=buttonY+64 ){
+			//presh=true;
+			if(!(started)){
+				music.play();
+				started=true;
+			}
 
+		}
+		
+	
+
+}
 
 let gameObjects=[];
 //Game Loop
 
+
+
 function animate(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    //ctx.fillStyle="#000000";
-    //ctx.strokeStyle='#eeeeee';
+	ctx.clearRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);
 	
+
+	if(!end)
+	{
+			
+			
+			//gameFrame++;
+			if(!started){
+				ctx.drawImage(buttonImage,buttonX,buttonY,64,64);	
+			}
+			else{
+				if( dot ){
+					for(i=0;i<n;i+=2){
+						let colour=getRandomNeonColor();
+						let cord= getnewcordinates(canvas.width,canvas.height,gameObjects);
+						let x= cord.x;
+						let y= cord.y;
+						gameObjects.push(new Dot(x,y,colour));
+						cord= getnewcordinates(canvas.width,canvas.height,gameObjects);
+						x= cord.x;
+						y= cord.y;
+						gameObjects.push(new Dot(x,y,colour));
+					}
+			
+					
+					dot=false;
+					//n*=2;
+				}
+				gameObjects.forEach(obj=>{
+					
+					obj.update();
+					obj.draw();
+					
+					
+			
+				});
+				
+				gameObjects=gameObjects.filter(obj=>!obj.markedForDeletion);//delete marked
+			
+				//ctx.font='20px Lucida Console, Monaco';
+				ctx.font=`20px "${font}" ,cursive`;
+				ctx.fillStyle="#f5fcff"
+				ctx.fillText("Score: "+score,canvas.width/2, 50);
+				//scoreui.innerHTML=score;
+			
+				if(gameObjects.length==0){ dot=true; d=0; n+=2; console.log("dot"); }
+			}
+					
+						
+	}
 	
-	
-	//ctx.stroke();
-   
-    if((gameFrame%speed==0)  && dot ){
-        for(i=0;i<n;i+=2){
-            let colour=getRandomNeonColor();
-            let cord= getnewcordinates(canvas.width,canvas.height,gameObjects);
-            let x= cord.x;
-            let y= cord.y;
-            gameObjects.push(new Dot(x,y,colour));
-            cord= getnewcordinates(canvas.width,canvas.height,gameObjects);
-            x= cord.x;
-            y= cord.y;
-            gameObjects.push(new Dot(x,y,colour));
-        }
-
-        
-        dot=false;
-        //n*=2;
-    }
-    gameObjects.forEach(obj=>{
-        
-		obj.update();
-		obj.draw();
-        
-		
-
-	});
-	
-    gameObjects=gameObjects.filter(obj=>!obj.markedForDeletion);//delete marked
-
-    //ctx.font='20px Lucida Console, Monaco';
-	//ctx.fillStyle="#f5fcff"
-	//ctx.fillText("Score: "+score,canvas.width-160, 50);
-    scoreui.innerHTML=score;
-
-    if(gameObjects.length==0){ dot=true; d=0; n+=2; console.log("dot"); }
 	requestAnimationFrame(animate);
-}
 
+}
 animate();
+music.loop=true;
 function getRandomNeonColor() {
     const neonColors = ["#f72585", "#4cc9f0", "#e2e84a", "#7209b7", "#3a0ca3", "#f48c06"];
     return neonColors[Math.floor(Math.random() * neonColors.length)];
